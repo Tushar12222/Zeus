@@ -6,7 +6,7 @@ import (
 	"zeus/models/row"
 	"zeus/models/drawBuffer"
   "zeus/utils"
-	"strconv"
+  "os"
 )
 
 // initial state of the editor
@@ -56,27 +56,25 @@ func main() {
 		fontSize,
 	)
   
-  // sample text to be displayed
-	sampleText := []string{"Bruv", "Whats up?", "Nin Amman", "Nin Amman", "Nin Amman", "Nin Amman", "Nin Amman", "Nin Amman", "Nin Amman", "Nin Amman", "Nin Amman"}
-  
-  // append the text to the state
-	for _ , s := range sampleText {
-		r := row.NewRow(s)
-		state.AppendRow(&r)
-	}
-  
-  // set the line no col width
-	state.LinenoOff = int32((state.CursorHorizontalJump * int32(len(strconv.Itoa(state.TextLines)) + 1)))
-
-  // set the cursor's horizontal position
-	state.CursorX = state.LinenoOff
 
   // initialize the draw buffer that handles drawing all the text to the screen
 	var buffer *drawBuffer.DrawBuffer = drawBuffer.NewBuffer("","")
 
-  // append all the text to the buffer
-  utils.RefreshBuffer(buffer, state)
+  // if a file name is passed then it is opened in the editor
+  if len(os.Args) > 1 {
+    filePath := os.Args[1]
+    utils.OpenFile(filePath, buffer, state)
 
+    // if there is no file name passed then it opens an empty editor
+  } else {
+    r := row.NewRow("")
+    state.AppendRow(&r)
+    state.UpdateLineno()
+    utils.RefreshBuffer(buffer, state)
+  }
+	// set the cursor's horizontal position
+	state.CursorX = state.LinenoOff
+  
   // main loop that currently runs on an uncapped fps
 	for !rl.WindowShouldClose() {
 
@@ -160,6 +158,7 @@ func main() {
 				copy(state.Text[state.GetCurrentRow()-1:], state.Text[state.GetCurrentRow():])
 				state.Text = state.Text[:len(state.Text)-1]
 				state.TextLines -= 1
+        state.UpdateLineno()
 				utils.RefreshBuffer(buffer, state)
         state.MoveCursorUp()
 				state.CursorX = (int32(l) * state.CursorHorizontalJump) + state.LinenoOff
@@ -182,6 +181,7 @@ func main() {
 			temp := state.Text[state.GetCurrentRow()].Text[state.GetCurrentCol():]
 			state.Text[state.GetCurrentRow()].Text = state.Text[state.GetCurrentRow()].Text[:state.GetCurrentCol()]
 			state.Text[state.GetCurrentRow()+1].Text = temp
+      state.UpdateLineno()
 			utils.RefreshBuffer(buffer, state)
       state.MoveCursorDown()
 			state.CursorX = state.LinenoOff
