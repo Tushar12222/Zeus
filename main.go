@@ -61,50 +61,31 @@ func main() {
 
 	state.LinenoOff = int32((state.CursorHorizontalJump * int32(len(strconv.Itoa(state.TextLines)) + 1)))
 	state.CursorX = state.LinenoOff
-	state.VisibleCols = state.GetVisibleCols()
-	state.VisibleCols -= 10
-	state.VisibleRows = state.GetVisibleRows()
 
 	var buffer *drawBuffer.DrawBuffer = drawBuffer.NewBuffer("","")
+	buffer.Reset()
+	for i := 0; i < state.TextLines; i++ {
+		buffer.AppendText(state.Text[i].Text)
+	}
+	buffer.AppendLineno(state.TextLines, len(strconv.Itoa(state.TextLines)))
 
 	for !rl.WindowShouldClose() {
 		if (rl.IsKeyPressedRepeat(rl.KeyRight) || rl.IsKeyPressed(rl.KeyRight)) {
-			if state.CursorX == (int32(len(state.Text[state.GetCurrentRow()].Text)) * state.CursorHorizontalJump) + state.LinenoOff - (state.ColOff * state.CursorHorizontalJump) && state.IsCursorWithinText() {
+			if state.CursorX == (int32(len(state.Text[state.GetCurrentRow()].Text)) * state.CursorHorizontalJump) + state.LinenoOff && state.IsCursorWithinText() {
 				state.MoveCursorDown()
 				state.CursorX = state.LinenoOff
-				state.ColOff = 0
-				buffer.ColOff = 0
 			} else if state.IsCursorWithinLine() {
 				state.MoveCursorRight()
-				curr := state.GetCurrentCol()
-				if curr > state.VisibleCols {
-					state.ColOff += (curr - state.VisibleCols)
-					buffer.ColOff = state.ColOff
-					state.MoveCursorLeft()
-				}
 			}
 		}
 		if (rl.IsKeyPressedRepeat(rl.KeyLeft) || rl.IsKeyPressed(rl.KeyLeft)) {
-			if state.CursorX == state.LinenoOff && state.GetCurrentRow() != 0 && state.ColOff == 0 {
+			if state.CursorX == state.LinenoOff && state.GetCurrentRow() != 0 {
 				prev := state.GetCurrentRow()-1
 				state.CursorX = (int32(len(state.Text[prev].Text)) * state.CursorHorizontalJump) + state.LinenoOff
 				state.MoveCursorUp()
-				state.ColOff = 0
-				buffer.ColOff = 0
-				curr := state.GetCurrentCol()
-				if curr > state.VisibleCols {
-					state.ColOff += (curr - state.VisibleCols + 1)
-					buffer.ColOff = state.ColOff
-					state.MoveCursorLeft()
-				}
 			} else if state.CursorX != state.LinenoOff {
 				state.MoveCursorLeft()
 			} else if state.IsCursorWithinLine() && state.CursorX == state.LinenoOff {
-				if state.ColOff != 0 {
-					state.ColOff -= 1
-					buffer.ColOff = state.ColOff
-					state.MoveCursorLeft()
-				}
 			}
 		}
 		if (rl.IsKeyPressedRepeat(rl.KeyUp) || rl.IsKeyPressed(rl.KeyUp)) && state.CursorY != 0 {
@@ -112,9 +93,7 @@ func main() {
 			l := len(state.Text[prev].Text)
 			curr := state.GetCurrentCol()
 			if int(curr) > l {
-				state.ColOff = 0
-				buffer.ColOff = 0
-				state.CursorX = (int32(l) * state.CursorHorizontalJump) + state.LinenoOff - (state.ColOff * state.CursorHorizontalJump)
+				state.CursorX = (int32(l) * state.CursorHorizontalJump) + state.LinenoOff
 			}
 			state.MoveCursorUp()
 		}
@@ -123,7 +102,7 @@ func main() {
 			l := len(state.Text[next].Text)
 			curr := state.GetCurrentCol()
 			if int(curr) > l {
-				state.CursorX = (int32(l) * state.CursorHorizontalJump) + state.LinenoOff - (state.ColOff * state.CursorHorizontalJump)
+				state.CursorX = (int32(l) * state.CursorHorizontalJump) + state.LinenoOff
 			}
 			state.MoveCursorDown()
 		}
@@ -135,16 +114,10 @@ func main() {
 				state.Text[state.GetCurrentRow()].Text = text[:colIndex] + string(rune(key)) + text[colIndex:]
 				buffer.Reset()
 				for _ , r := range state.Text {
-					buffer.AppendText(r.Text, state.VisibleCols)
+					buffer.AppendText(r.Text)
 				}
 				buffer.AppendLineno(state.TextLines, len(strconv.Itoa(state.TextLines)))
 				state.MoveCursorRight()
-				curr := state.GetCurrentCol()
-				if curr > state.VisibleCols {
-					state.ColOff += 1
-					buffer.ColOff = state.ColOff
-					state.MoveCursorLeft()
-				}
 			}
 			key = rl.GetCharPressed()
 		}
@@ -157,18 +130,18 @@ func main() {
 				state.TextLines -= 1
 				buffer.Reset()
 				for _ , r := range state.Text {
-					buffer.AppendText(r.Text, state.VisibleCols)
+					buffer.AppendText(r.Text)
 				}
 				buffer.AppendLineno(state.TextLines, len(strconv.Itoa(state.TextLines)))
 				state.MoveCursorUp()
 				state.CursorX = (int32(l) * state.CursorHorizontalJump) + state.LinenoOff
-			} else {
+			} else if state.CursorX != state.LinenoOff {
 				colIndex := state.GetCurrentCol()
 				text := state.Text[state.GetCurrentRow()].Text
 				state.Text[state.GetCurrentRow()].Text = text[:colIndex-1] + text[colIndex:]
 				buffer.Reset()
 				for _ , r := range state.Text {
-					buffer.AppendText(r.Text, state.VisibleCols)
+					buffer.AppendText(r.Text)
 				}
 				buffer.AppendLineno(state.TextLines, len(strconv.Itoa(state.TextLines)))
 				state.MoveCursorLeft()
@@ -183,20 +156,13 @@ func main() {
 			state.Text[state.GetCurrentRow()+1].Text = temp
 			buffer.Reset()
 			for _ , r := range state.Text {
-				buffer.AppendText(r.Text, state.VisibleCols)
+				buffer.AppendText(r.Text)
 			}
 			buffer.AppendLineno(state.TextLines, len(strconv.Itoa(state.TextLines)))
 			state.MoveCursorDown()
 			state.CursorX = state.LinenoOff
 
 		}
-
-		buffer.Reset()
-		for i := state.RowOff; i < int32(state.TextLines); i++ {
-			buffer.AppendText(state.Text[i].Text, state.VisibleCols)
-		}
-		buffer.AppendLineno(state.TextLines, len(strconv.Itoa(state.TextLines)))
-
 		rl.BeginDrawing()
 
 		rl.ClearBackground(state.BackgroundColor)

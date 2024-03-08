@@ -27,10 +27,6 @@ type State struct {
 	LinenoBackground rl.Color
 	TextLines int
 	LinenoOff int32
-	ColOff int32
-	RowOff int32
-	VisibleCols int32
-	VisibleRows int32
 }
 
 func InitState(fontPath string, textX, textY, cursorX, cursorY int32, textColor, cursorColor, backgroundColor, linenoColor, linenoBackground rl.Color, screenHeight, screenWidth int32, spacing , fontSize float32) *State {
@@ -58,10 +54,6 @@ func InitState(fontPath string, textX, textY, cursorX, cursorY int32, textColor,
 		LinenoBackground: linenoBackground,
 		TextLines: 0,
 		LinenoOff: 0,
-		ColOff: 0,
-		RowOff: 0,
-		VisibleCols: 0,
-		VisibleRows: 0,
 	}
 }
 
@@ -103,17 +95,9 @@ func (state *State) GetCurrentRow() int32 {
 }
 
 func (state *State) IsCursorWithinLine() bool {
-	return int(state.GetCurrentCol() + state.ColOff) < len(state.Text[state.GetCurrentRow()].Text)
+	return int(state.GetCurrentCol()) < len(state.Text[state.GetCurrentRow()].Text)
 }
 
 func (state *State) IsCursorWithinText() bool {
 	return int(state.GetCurrentRow()) < state.TextLines-1
-}
-
-func (state *State) GetVisibleCols() int32 {
-	return (state.ScreenWidth - state.LinenoOff) / state.CursorHorizontalJump
-}
-
-func (state *State) GetVisibleRows() int32 {
-	return state.ScreenHeight / state.CursorVerticalJump
 }
